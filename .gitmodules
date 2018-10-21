@@ -1,9 +1,3 @@
 [submodule "Pangolin"]
 	path = Pangolin
 	url = https://github.com/stevenlovegrove/Pangolin.git
-[submodule "ORB_SLAM2"]
-	path = ORB_SLAM2
-	url = https://github.com/raulmur/ORB_SLAM2.git
-[submodule "glew"]
-	path = glew
-	url = https://github.com/nigels-com/glew.git
