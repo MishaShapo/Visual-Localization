@@ -5,6 +5,10 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 #include "Detector.h"
+#include "arapaho.h"
+
+#define MAX_OBJECTS_PER_FRAME (100)
+#define TARGET_SHOW_FPS (10)
 
 
 using namespace cv;
@@ -13,190 +17,126 @@ using namespace dnn;
 
 
 
+    static ArapahoV2* p;
+
+
+
+
+
 	//static const std::string kWinName = "Deep learning object detection in OpenCV";
 
     Detector::Detector() {
-	    confThreshold = .4;
-	    nmsThreshold = .3;
-	    scale = .00394;
-	    mean = Scalar(0,0,0);
-	    swapRB = 1;
-	    inpWidth = 640;
-	    inpHeight = 480;
 
-	    std::string modelPath = "/home/fri/mask_slam/ORB_SLAM2/yolov2-tiny.weights";
-	    std::string configPath = "/home/fri/mask_slam/ORB_SLAM2/cfg/yolov2-tiny.cfg";
+
+	    static char* modelPath = "/home/fri/mask_slam/Visual-Localization/yolov3.weights";
+	    static char* configPath = "/home/fri/mask_slam/Visual-Localization/cfg/yolov3.cfg";
 
 	    // Open file with classes names.
 
 
-	    std::string file = "/home/fri/mask_slam/ORB_SLAM2/data/coco.names";
-	    std::ifstream ifs(file.c_str());
-	    if (!ifs.is_open())
-	        CV_Error(Error::StsError, "File " + file + " not found");
-	    std::string line;
-	    while (std::getline(ifs, line))
-	    {
-	        classes.push_back(line);
-	    }
+	    static char* file = "/home/fri/mask_slam/Visual-Localization/cfg/coco.data";
+
+        p = new ArapahoV2();
+        if(!p) {
+            EPRINTF("Setup failed!\n");
+            return;
+        }
+        ArapahoV2Params ap;
+        ap.datacfg = file;
+        ap.cfgfile = configPath;
+        ap.weightfile = modelPath;
+        ap.nms = .4;
+        ap.maxClasses = 2;
+        int expectedW = 0;
+        int expectedH = 0;
+        bool ret = p->Setup(ap, expectedW, expectedH);
+        if(false == ret) {
+            EPRINTF("Setup failed!\n");
+            if(p) delete p;
+            p = 0;
+        }
 
 
-	    // Load a model.
-	    net = readNetFromDarknet(configPath, modelPath);
-	    //net = readNetFromDarknet(modelPath, configPath);
-	    net.setPreferableBackend(0);
-	    net.setPreferableTarget(DNN_TARGET_OPENCL);
-	    outNames = getOutputsNames(net);
-
-	    // Create a window
-	    //startWindowThread();
-	    //namedWindow("test", WINDOW_AUTOSIZE);
-	    //int initialConf = (int)(confThreshold * 100);
-	    //createTrackbar("Confidence threshold, %", "test", &initialConf, 99, callback);
 
     }
 
     void Detector::detect(Mat frame, std::vector<BoundingBox> &bBoxes) {
-	        // Process frames.
-	    Mat blob;
+	    ArapahoV2ImageBuff arapahoImage;
+	    int imageWidth = frame.size().width;
+	    int imageHeight = frame.size().height;
 
-	    // Create a 4D blob from a frame.
-	    Size inpSize(inpWidth > 0 ? inpWidth : frame.cols,
-		         inpHeight > 0 ? inpHeight : frame.rows);
-	    //blobFromImage(frame, blob, scale, inpSize, mean, swapRB, false);
-	    blob = blobFromImage(frame, scale, inpSize, mean, swapRB, false);
+	    arapahoImage.bgr = frame.data;
+	    arapahoImage.w = imageWidth;
+	    arapahoImage.h = imageHeight;
+	    arapahoImage.channels = 3;
 
-	    // Run a model.
-	    net.setInput(blob);
-	    if (net.getLayer(0)->outputNameToIndex("im_info") != -1)  // Faster-RCNN or R-FCN
-	    {
-	        resize(frame, frame, inpSize);
-	        Mat imInfo = (Mat_<float>(1, 3) << inpSize.height, inpSize.width, 1.6f);
-	        net.setInput(imInfo, "im_info");
-	    }
-	    std::vector<Mat> outs;
-	    net.forward(outs, outNames);
+	    int numObjects = 0;
 
-	    postprocess(frame, outs, net, bBoxes);
+	    #ifdef _ENABLE_OPENCV_SCALING
+	    p->Detect(frame, .24, .5, numObjects);
+	    #else
+	    p->Detect(arapahoImage, .24, .5, numObjects);
+	    #endif
+        printf("==> Detected [%d] objects\n", numObjects);
+	    box* boxes = 0;
+        std::string* labels;
+	    if(numObjects > 0 && numObjects < MAX_OBJECTS_PER_FRAME) {
+            boxes = new box[numObjects];
+            labels = new std::string[numObjects];
+            std::cout << "let's see how many objects: " << numObjects  << std::endl;
+            if(!boxes) {
+	            if(p) delete p;
+	            p = 0;
+	            return;
+                std::cout << "returning because no boxes" << std::endl;
+            }
+            if(!labels) {
+	            if(p) delete p;
+                p = 0;
+                if(boxes) {
+                    delete[] boxes;
+                    boxes = NULL;
+                }
+                std::cout << "returning because no labels" << std::endl;
+                return;
+            }
 
-	    // Put efficiency information.
-	    //std::vector<double> layersTimes;
-	    //double freq = getTickFrequency() / 1000;
-	    //double t = net.getPerfProfile(layersTimes) / freq;
-	    //std::string label = format("Inference time: %.2f ms", t);
-	    //putText(frame, label, Point(0, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-	
-	    //waitKey(1);
-	    //imshow("test", frame);
-	    //waitKey(0);
-	    //destroyAllWindows();
+            p->GetBoxes(boxes, labels, numObjects);
+
+            int objId = 0;
+	        int leftTopX = 0, leftTopY = 0, rightBotX = 0,rightBotY = 0;
+
+            for (objId = 0; objId < numObjects; objId++) {
+                leftTopX = 1 + imageWidth*(boxes[objId].x - boxes[objId].w / 2);
+                leftTopY = 1 + imageHeight*(boxes[objId].y - boxes[objId].h / 2);
+
+                rightBotX = 1 + imageWidth*(boxes[objId].x + boxes[objId].w / 2);
+                rightBotY = 1 + imageHeight*(boxes[objId].y + boxes[objId].h / 2);
+
+                // Show image and overlay using OpenCV
+                rectangle(frame, cvPoint(leftTopX, leftTopY), cvPoint(rightBotX, rightBotY), CV_RGB(255, 0, 0), 1, 8, 0);
+                bBoxes.push_back(BoundingBox(labels[objId], leftTopX, leftTopY, rightBotX, rightBotY));
+            }
+
+            if (boxes) {
+                delete[] boxes;
+                boxes = NULL;
+            }
+
+            if (labels) {
+                delete[] labels;
+                labels = NULL;
+            }
+        }
+
+
+
     }
     
 
 
 
-
-    void Detector::postprocess(Mat& frame, const std::vector<Mat>& outs, Net& net, std::vector<BoundingBox> &bBoxes) {
-        static std::vector<int> outLayers = net.getUnconnectedOutLayers();
-        static std::string outLayerType = net.getLayer(outLayers[0])->type;
-
-        std::vector<int> classIds;
-        std::vector<float> confidences;
-        std::vector<Rect> boxes;
-        if (net.getLayer(0)->outputNameToIndex("im_info") != -1)  // Faster-RCNN or R-FCN
-        {
-            // Network produces output blob with a shape 1x1xNx7 where N is a number of
-            // detections and an every detection is a vector of values
-            // [batchId, classId, confidence, left, top, right, bottom]
-            CV_Assert(outs.size() == 1);
-            float* data = (float*)outs[0].data;
-            for (size_t i = 0; i < outs[0].total(); i += 7)
-            {
-                float confidence = data[i + 2];
-                if (confidence > confThreshold)
-                {
-                    int left = (int)data[i + 3];
-                    int top = (int)data[i + 4];
-                    int right = (int)data[i + 5];
-                    int bottom = (int)data[i + 6];
-                    int width = right - left + 1;
-                    int height = bottom - top + 1;
-                    classIds.push_back((int)(data[i + 1]) - 1);  // Skip 0th background class id.
-                    boxes.push_back(Rect(left, top, width, height));
-                    confidences.push_back(confidence);
-                }
-            }
-        }
-        else if (outLayerType == "DetectionOutput")
-        {
-            // Network produces output blob with a shape 1x1xNx7 where N is a number of
-            // detections and an every detection is a vector of values
-            // [batchId, classId, confidence, left, top, right, bottom]
-            CV_Assert(outs.size() == 1);
-            float* data = (float*)outs[0].data;
-            for (size_t i = 0; i < outs[0].total(); i += 7)
-            {
-                float confidence = data[i + 2];
-                if (confidence > confThreshold)
-                {
-                    int left = (int)(data[i + 3] * frame.cols);
-                    int top = (int)(data[i + 4] * frame.rows);
-                    int right = (int)(data[i + 5] * frame.cols);
-                    int bottom = (int)(data[i + 6] * frame.rows);
-                    int width = right - left + 1;
-                    int height = bottom - top + 1;
-                    classIds.push_back((int)(data[i + 1]) - 1);  // Skip 0th background class id.
-                    boxes.push_back(Rect(left, top, width, height));
-                    confidences.push_back(confidence);
-                }
-            }
-        }
-        else if (outLayerType == "Region")
-        {
-            for (size_t i = 0; i < outs.size(); ++i)
-            {
-                // Network produces output blob with a shape NxC where N is a number of
-                // detected objects and C is a number of classes + 4 where the first 4
-                // numbers are [center_x, center_y, width, height]
-                float* data = (float*)outs[i].data;
-                for (int j = 0; j < outs[i].rows; ++j, data += outs[i].cols)
-                {
-                    Mat scores = outs[i].row(j).colRange(5, outs[i].cols);
-                    Point classIdPoint;
-                    double confidence;
-                    minMaxLoc(scores, 0, &confidence, 0, &classIdPoint);
-                    if (confidence > confThreshold)
-                    {
-                        int centerX = (int)(data[0] * frame.cols);
-                        int centerY = (int)(data[1] * frame.rows);
-                        int width = (int)(data[2] * frame.cols);
-                        int height = (int)(data[3] * frame.rows);
-                        int left = centerX - width / 2;
-                        int top = centerY - height / 2;
-
-                        classIds.push_back(classIdPoint.x);
-                        confidences.push_back((float)confidence);
-                        boxes.push_back(Rect(left, top, width, height));
-                    }
-                }
-            }
-        }
-        else
-            CV_Error(Error::StsNotImplemented, "Unknown output layer type: " + outLayerType);
-
-        std::vector<int> indices;
-        NMSBoxes(boxes, confidences, confThreshold, nmsThreshold, indices);
-        for (size_t i = 0; i < indices.size(); ++i)
-        {
-            int idx = indices[i];
-            Rect box = boxes[idx];
-            drawPred(classIds[idx], confidences[idx], box.x, box.y,
-                     box.x + box.width, box.y + box.height, frame);
-            bBoxes.push_back(BoundingBox(classIds[idx], confidences[idx], box.x,
-                                        box.y, box.x + box.width, box.y + box.height));
-        }
-    }
-
+/*
     void Detector::drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame)
     {
         rectangle(frame, Point(left, top), Point(right, bottom), Scalar(0, 255, 0));
@@ -216,30 +156,4 @@ using namespace dnn;
                   Point(left + labelSize.width, top + baseLine), Scalar::all(255), FILLED);
         putText(frame, label, Point(left, top), FONT_HERSHEY_SIMPLEX, 0.5, Scalar());
     }
-
-
-    std::vector<String> Detector::getOutputsNames(const Net& net)
-    {
-        static std::vector<String> names;
-        if (names.empty())
-        {
-            std::vector<int> outLayers = net.getUnconnectedOutLayers();
-            std::vector<String> layersNames = net.getLayerNames();
-            names.resize(outLayers.size());
-            for (size_t i = 0; i < outLayers.size(); ++i)
-                names[i] = layersNames[outLayers[i] - 1];
-        }
-        return names;
-    }
-
-
-    Detector* createDetector() {
-        Detector* det { new Detector() };
-        d = det;
-        return d;
-    }
-
-    void callback(int pos, void*)
-    {
-        d->confThreshold = pos * 0.01f;
-    }
+*/
