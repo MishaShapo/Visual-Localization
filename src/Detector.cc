@@ -1,59 +1,63 @@
+#include "arapaho.hpp"
 #include <fstream>
 #include <sstream>
-#include <opencv2/opencv.hpp>
-#include <opencv2/dnn.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/highgui.hpp>
+#include <string>
+#include "opencv2/core/core.hpp"
+#include <opencv2/imgproc/imgproc.hpp>
+#include "opencv2/highgui/highgui.hpp"
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "Detector.h"
-#include "arapaho.h"
+
 
 #define MAX_OBJECTS_PER_FRAME (100)
 #define TARGET_SHOW_FPS (10)
 
+#define _ENABLE_OPENCV_SCALING
 
 using namespace cv;
-using namespace dnn;
-
-
-
-
-    static ArapahoV2* p;
 
 
 
 
 
-	//static const std::string kWinName = "Deep learning object detection in OpenCV";
+static char modelPath[] = "input.weights";
+static char configPath[] = "input.cfg";
+static char dataPath[] = "input.data";
+
+static ArapahoV2* p;
+
 
     Detector::Detector() {
+        std::cout << "Detector constructor" << std::endl;
 
 
-	    static char* modelPath = "/home/fri/mask_slam/Visual-Localization/yolov3.weights";
-	    static char* configPath = "/home/fri/mask_slam/Visual-Localization/cfg/yolov3.cfg";
-
-	    // Open file with classes names.
 
 
-	    static char* file = "/home/fri/mask_slam/Visual-Localization/cfg/coco.data";
 
+        
         p = new ArapahoV2();
         if(!p) {
             EPRINTF("Setup failed!\n");
             return;
         }
         ArapahoV2Params ap;
-        ap.datacfg = file;
+        ap.datacfg = dataPath;
         ap.cfgfile = configPath;
         ap.weightfile = modelPath;
-        ap.nms = .4;
+        ap.nms = 0.4;
         ap.maxClasses = 2;
+
         int expectedW = 0;
         int expectedH = 0;
-        bool ret = p->Setup(ap, expectedW, expectedH);
+        bool ret = false;
+        ret = p->Setup(ap, expectedW, expectedH);
         if(false == ret) {
             EPRINTF("Setup failed!\n");
+            std::cout << "setup failed" << std::endl;
             if(p) delete p;
             p = 0;
+            return;
         }
 
 
@@ -61,6 +65,10 @@ using namespace dnn;
     }
 
     void Detector::detect(Mat frame, std::vector<BoundingBox> &bBoxes) {
+        
+        if(frame.empty()) {
+            std::cout << "WARNING: detect recieved empty frame. Might be an issue" << std::endl;
+        }
 	    ArapahoV2ImageBuff arapahoImage;
 	    int imageWidth = frame.size().width;
 	    int imageHeight = frame.size().height;
@@ -73,8 +81,11 @@ using namespace dnn;
 	    int numObjects = 0;
 
 	    #ifdef _ENABLE_OPENCV_SCALING
+        std::cout<< "using frame " << std::endl;
+        
 	    p->Detect(frame, .24, .5, numObjects);
 	    #else
+        std::cout<< "using ArapahoV2ImageBuff" << std::endl;
 	    p->Detect(arapahoImage, .24, .5, numObjects);
 	    #endif
         printf("==> Detected [%d] objects\n", numObjects);

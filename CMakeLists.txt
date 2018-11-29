@@ -51,6 +51,7 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/darknet/src
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 add_library(${PROJECT_NAME} SHARED
+src/arapaho.cc
 src/Detector.cc
 src/System.cc
 src/Tracking.cc
@@ -71,7 +72,6 @@ src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
-src/arapaho.cc
 )
 
 target_link_libraries(${PROJECT_NAME}
