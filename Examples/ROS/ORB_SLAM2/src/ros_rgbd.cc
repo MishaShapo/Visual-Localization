@@ -123,7 +123,7 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
 
     //cv::imshow("detections", cv_ptrRGB->image);
 
-    cout << "Number of detections: " << bBoxes.size() << "\n";
+    //cout << "Number of detections: " << bBoxes.size() << "\n";
 
     mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec(), bBoxes);
 }
