@@ -189,7 +189,7 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     return Tcw;
 }
 
-cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, std::vector<BoundingBox> &bBoxes)
+cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp)
 {
     if(mSensor!=RGBD)
     {
@@ -231,7 +231,7 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     }
     }
 
-    cv::Mat Tcw = mpTracker->GrabImageRGBD(im,depthmap,timestamp, bBoxes);
+    cv::Mat Tcw = mpTracker->GrabImageRGBD(im,depthmap,timestamp);
 
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;

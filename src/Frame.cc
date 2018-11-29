@@ -116,7 +116,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     AssignFeaturesToGrid();
 }
 
-Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, std::vector<BoundingBox> &bBoxes)
+Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
      mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
@@ -134,51 +134,11 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
 
     // ORB extraction
     ExtractORB(0,imGray);
-/*
-    // added by Abrar Anwar to remove features within bounding boxes of people
-    if(mvKeys.empty())
-        return;
-
-    std::vector<cv::KeyPoint> tempKeys;
-    cv::Mat tempDescriptors;
-
-    // let's create a Mat filled with with the bounding boxes
-    cv::Mat mask;
-    cout << "alive here" << endl;
-    for(uint32_t m = 0; m < bBoxes.size(); m++) {
-        BoundingBox b = bBoxes.at(m);
-        cv::rectangle(mask, cv::Point(b.left, b.top), cv::Point(b.right, b.bottom), Scalar(0,0,255), CV_FILLED, 8, 0);
-    }
-
-    cout << "alive here 2" << endl;
-
-    for(uint32_t n = 0; n < mvKeys.size(); n++) {
-        // this should be right according to docs
-        cv::KeyPoint k = mvKeys[n];
-        int color = (int)mask.at<uchar>(k.pt.y ,k.pt.x);
-    cout << "alive here 3" << endl;
-        if(color == 1) {
-            tempKeys.push_back(k);
-            tempDescriptors.push_back(mDescriptors.row(n));
-        }
-
-    }
-    cout << "alive here 4" << endl;
-
-    mvKeys = tempKeys;
-    mDescriptors = tempDescriptors;
-*/
-
-
 
     N = mvKeys.size();
 
     if(mvKeys.empty())
         return;
-
-    
-
-
 
     UndistortKeyPoints();
 

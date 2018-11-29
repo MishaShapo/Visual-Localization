@@ -25,14 +25,13 @@
 #include<chrono>
 
 #include<opencv2/core/core.hpp>
+
 #include<System.h>
 
 using namespace std;
 
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
-
-
 
 int main(int argc, char **argv)
 {
@@ -74,8 +73,6 @@ int main(int argc, char **argv)
     cout << "Images in the sequence: " << nImages << endl << endl;
 
     // Main loop
-    Detector* d;
-    d = { new Detector() };
     cv::Mat imRGB, imD;
     for(int ni=0; ni<nImages; ni++)
     {
@@ -96,10 +93,9 @@ int main(int argc, char **argv)
 #else
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
-        std::vector<BoundingBox> bBoxes;
-        d->detect(imRGB, bBoxes);
+
         // Pass the image to the SLAM system
-        SLAM.TrackRGBD(imRGB,imD,tframe, bBoxes);
+        SLAM.TrackRGBD(imRGB,imD,tframe);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();

@@ -11,11 +11,16 @@ using namespace cv;
 using namespace dnn;
 
 
+class Detector;
+Detector* d;
+Detector* createDetector();
 
+void callback(int pos, void*);
 	//static const std::string kWinName = "Deep learning object detection in OpenCV";
 class BoundingBox {
     public:
-        std::string className;
+        int classId;
+        float conf;
         // these two make the top left corner
         int left;
         int top;
@@ -23,19 +28,29 @@ class BoundingBox {
         int right;
         int bottom;
 
-        BoundingBox(std::string c, int l, int t, int r, int b) : className(c), left(l), top(t), right(r), bottom(b) {}
+        BoundingBox(int cId, float c, int l, int t, int r, int b) : classId(cId),
+                    conf(c), left(l), top(t), right(r), bottom(b) {}
 };
 
-
 class Detector {
-    private:
-
     public:
-    
-        Detector();
-        void detect(Mat frame, std::vector<BoundingBox> &bBoxes);
-    
+    float confThreshold, nmsThreshold;
+    std::vector<std::string> classes;
+    float scale;
+    bool swapRB;
+    int inpWidth;
+    int inpHeight;
+    std::vector<String> outNames;
+    Net net;
+    Scalar mean;
+    Detector();
 
+    void detect(Mat frame, std::vector<BoundingBox> &bBoxes);
+    
+    void postprocess(Mat& frame, const std::vector<Mat>& outs, Net& net, std::vector<BoundingBox> &bBoxes);
+    void drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame);
+
+    std::vector<String> getOutputsNames(const Net& net);
 
 };
 

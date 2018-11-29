@@ -44,14 +44,11 @@ ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
-${PROJECT_SOURCE_DIR}/Thirdparty/darknet/include
-${PROJECT_SOURCE_DIR}/Thirdparty/darknet/src
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 add_library(${PROJECT_NAME} SHARED
-src/arapaho.cc
 src/Detector.cc
 src/System.cc
 src/Tracking.cc
@@ -80,7 +77,6 @@ ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
-${PROJECT_SOURCE_DIR}/Thirdparty/darknet/libdarknet-cpp-shared.so
 )
 
 message(STATUS "Compile With map save/load function")
