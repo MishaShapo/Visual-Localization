@@ -33,7 +33,6 @@
 #include<opencv2/core/core.hpp>
 
 #include"../../../include/System.h"
-#include "../../../include/Detector.h"
 
 using namespace std;
 
@@ -126,7 +125,7 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
 
     cout << "Number of detections: " << bBoxes.size() << "\n";
 
-    mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec());
+    mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec(), bBoxes);
 }
 
 

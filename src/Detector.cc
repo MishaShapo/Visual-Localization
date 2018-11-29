@@ -24,13 +24,13 @@ using namespace dnn;
 	    inpWidth = 640;
 	    inpHeight = 480;
 
-	    std::string modelPath = "/home/fri/mask_slam/ORB_SLAM2/yolov2-tiny.weights";
-	    std::string configPath = "/home/fri/mask_slam/ORB_SLAM2/cfg/yolov2-tiny.cfg";
+	    std::string modelPath = "yolov2-tiny.weights";
+	    std::string configPath = "cfg/yolov2-tiny.cfg";
 
 	    // Open file with classes names.
 
 
-	    std::string file = "/home/fri/mask_slam/ORB_SLAM2/data/coco.names";
+	    std::string file = "data/coco.names";
 	    std::ifstream ifs(file.c_str());
 	    if (!ifs.is_open())
 	        CV_Error(Error::StsError, "File " + file + " not found");
@@ -233,13 +233,4 @@ using namespace dnn;
     }
 
 
-    Detector* createDetector() {
-        Detector* det { new Detector() };
-        d = det;
-        return d;
-    }
 
-    void callback(int pos, void*)
-    {
-        d->confThreshold = pos * 0.01f;
-    }
