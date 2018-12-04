@@ -58,12 +58,14 @@ public:
 };
 
  ros::Publisher pose_pub;
-
+ ofstream orb_out_fi ("orb_pose.txt");
+ 
 int main(int argc, char **argv)
 {
+        
     ros::init(argc, argv, "RGBD");
     ros::start();
-
+    orb_out_fi << "time,xpos,ypos,zpos,xori,yori,zori,wori";
     if(argc != 3)
     {
         cerr << endl << "Usage: rosrun ORB_SLAM2 RGBD path_to_vocabulary path_to_settings" << endl;        
@@ -72,7 +74,7 @@ int main(int argc, char **argv)
     }    
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::RGBD,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::RGBD,true, true);
 
     ImageGrabber igb(&SLAM);
     igb.d = { new Detector() };
@@ -86,7 +88,7 @@ int main(int argc, char **argv)
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2));
-
+    
 
     ros::spin();
 
@@ -128,9 +130,9 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     }
 
     
-    //detections = cv_ptrRGB->image.copyTo();
+    detections = cv_ptrRGB->image.clone();
 
-    d->detect(cv_ptrRGB->image, bBoxes);
+    d->detect(detections, bBoxes);
 
     //cv::imshow("detections", cv_ptrRGB->image);
 
@@ -169,9 +171,18 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     }
     pose_pub.publish(pose);
  
+    if (orb_out_fi.is_open()) {
+        orb_out_fi << pose.header.stamp << ','
+        << pose.pose.position.x << ','
+        << pose.pose.position.y << ','
+        << pose.pose.position.z << ','
+        << pose.pose.orientation.x << ','
+        << pose.pose.orientation.y << ','
+        << pose.pose.orientation.z << ','
+        << pose.pose.orientation.w << endl;
+    }
 
-
-
+    
 
 
 }

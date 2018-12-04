@@ -26,6 +26,7 @@
 
 #include<opencv2/core/core.hpp>
 #include<System.h>
+#include"../../include/Converter.h"
 
 using namespace std;
 
@@ -33,7 +34,8 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
 
 
-
+    Mat detections;
+ ofstream orb_out_fi ("orb_pose.txt");
 int main(int argc, char **argv)
 {
     if(argc != 5)
@@ -41,6 +43,7 @@ int main(int argc, char **argv)
         cerr << endl << "Usage: ./rgbd_tum path_to_vocabulary path_to_settings path_to_sequence path_to_association" << endl;
         return 1;
     }
+    orb_out_fi << "timestamp tx ty tz qx qy qz qw\n";
 
     // Retrieve paths to images
     vector<string> vstrImageFilenamesRGB;
@@ -97,9 +100,39 @@ int main(int argc, char **argv)
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
         std::vector<BoundingBox> bBoxes;
-        d->detect(imRGB, bBoxes);
+        detections = imRGB.clone();
+        d->detect(detections, bBoxes);
         // Pass the image to the SLAM system
-        SLAM.TrackRGBD(imRGB,imD,tframe, bBoxes);
+        cv::Mat Tcw = SLAM.TrackRGBD(imRGB,imD,tframe, bBoxes);
+
+        float tx, ty, tz, qx, qy, qz, qw;
+        if(Tcw.empty()) {
+            tx = ty = tz = qx = qy = qz = qw = 0;
+        } 
+        else {
+            cv::Mat Rwc = Tcw.rowRange(0,3).colRange(0,3).t(); // Rotation information
+            cv::Mat twc = -Rwc*Tcw.rowRange(0,3).col(3); // translation information
+            vector<float> q = ORB_SLAM2::Converter::toQuaternion(Rwc);
+            tx = twc.at<float>(0,0);
+            ty = twc.at<float>(0,1);
+            tz = twc.at<float>(0,2);
+            qx = q[0];
+            qy = q[1];
+            qz = q[2];
+            qw = q[3];
+        }
+
+
+        if (orb_out_fi.is_open()) {
+            orb_out_fi << ni << ' '
+            << tx << ' '
+            << ty << ' '
+            << tz << ' '
+            << qx << ' '
+            << qy << ' '
+            << qz << ' '
+            << qw << endl;
+        }
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
